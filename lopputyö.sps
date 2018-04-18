@@ -12,7 +12,12 @@ MISSING VALUES    k7a to k7k (8).
 
 RECODE k7a to k7k (1=5) (2=4) (3=3) (4=2) (5=1).
 
-RECODE    k18a (1=10) (2=9) (3=8) (4=7) (5=6) (6=5) (7=4) (8=3) (9=2) (10=1).  
+RECODE    k18a (1=10) (2=9) (3=8) (4=7) (5=6) (6=5) (7=4) (8=3) (9=2) (10=1) into k18a_rev.
+VALUE LABELS    
+k18a
+1 'Hyväosaisimmat'
+10 'Huono-osaisimmat'.
+EXECUTE.    
 
 MISSING VALUES    k8a to k8d (8).
 
@@ -63,6 +68,24 @@ luokka
 3 'ylä-luokka'.
 EXECUTE.
 
+RECODE k62 (MISSING=SYSMIS) (1200 thru 1999=2) (2000 thru 2999=3) (1199 thru Highest=1) (Lowest 
+    thru 3000=4) INTO tulokvartaalit.
+VARIABLE LABELS  tulokvartaalit 'tulokvartaalit'.
+EXECUTE.
+
+VALUE LABELS   
+tulokvartaalit
+1 'korkeintaan 1200 euroa/kk'
+2 '1200 - 2000 euroa/kk'
+3 '2000 - 3000 euroa/kk'
+4 ' yli 3000 euroa/kk'.
+EXECUTE.
+
+
+
+COMPUTE ika_uusi=2009-k2.
+EXECUTE.
+
 RECODE k25 (1=1) (2 thru 5=2) (ELSE=SYSMIS) INTO aidintyodikot.
 VARIABLE LABELS aidintyodikot 'aidintyodikot'.
 EXECUTE.
@@ -88,18 +111,6 @@ FACTOR
   /EXTRACTION ML
   /CRITERIA ITERATE(25) DELTA(0)
   /ROTATION OBLIMIN.
-
-* Ikämuuttujan laskeminen
-
-COMPUTE ika_uusi=2009-k2.
-EXECUTE.
-
-* Tulokvartaalien laskeminen henkilökohtaisista bruttotuloista
-
-RECODE k62 (MISSING=SYSMIS) (1200 thru 1999=2) (2000 thru 2999=3) (1199 thru Highest=1) (Lowest 
-    thru 3000=4) INTO tulokvartaalit.
-VARIABLE LABELS  tulokvartaalit 'tulokvartaalit'.
-EXECUTE.
 
 * Summamuuttujien luominen. Kattelin läpi nuo descriptivet ja ei tarvii vähentää vastaajia (Mean -1) tjsp.
 * Suhteet:
@@ -198,12 +209,12 @@ REGRESSION
 
 * Sama kun tulot on uudeelleenkoodattu tulokvartaaleihin
 
-FREQUENCIES VARIABLES=tulokvartaalit k60 k18a
+FREQUENCIES VARIABLES=tulokvartaalit k18a
   /BARCHART FREQ
   /ORDER=ANALYSIS.
 
 CORRELATIONS
-  /VARIABLES=tulokvartaalit k18a k60 
+  /VARIABLES=tulokvartaalit k18a
   /PRINT=TWOTAIL NOSIG
   /STATISTICS DESCRIPTIVES
   /MISSING=LISTWISE.
@@ -213,7 +224,7 @@ REGRESSION
   /STATISTICS COEFF OUTS CI(95) R ANOVA COLLIN TOL
   /CRITERIA=PIN(.05) POUT(.10)
   /NOORIGIN 
-  /DEPENDENT k18a k60
+  /DEPENDENT k18a
   /METHOD=ENTER tulokvartaalit
   /SCATTERPLOT=(*ZRESID ,*ZPRED)
   /RESIDUALS DURBIN
@@ -229,7 +240,7 @@ REGRESSION
   /CRITERIA=PIN(.05) POUT(.10)
   /NOORIGIN 
   /DEPENDENT suhteet
-  /METHOD=ENTER k18a k1 ika_uusi
+  /METHOD=ENTER k18a_rev
   /SCATTERPLOT=(*ZRESID ,*ZPRED)
   /RESIDUALS DURBIN
   /CASEWISE PLOT(ZRESID) OUTLIERS(3).
@@ -240,7 +251,7 @@ REGRESSION
   /CRITERIA=PIN(.05) POUT(.10)
   /NOORIGIN 
   /DEPENDENT kotitausta
-  /METHOD=ENTER k18a k1 ika_uusi
+  /METHOD=ENTER k18a_rev
   /SCATTERPLOT=(*ZRESID ,*ZPRED)
   /RESIDUALS DURBIN
   /CASEWISE PLOT(ZRESID) OUTLIERS(3).
@@ -251,7 +262,7 @@ REGRESSION
   /CRITERIA=PIN(.05) POUT(.10)
   /NOORIGIN 
   /DEPENDENT maaratiet
-  /METHOD=ENTER k18a k1 ika_uusi
+  /METHOD=ENTER k18a_rev
   /SCATTERPLOT=(*ZRESID ,*ZPRED)
   /RESIDUALS DURBIN
   /CASEWISE PLOT(ZRESID) OUTLIERS(3).
@@ -262,82 +273,7 @@ REGRESSION
   /CRITERIA=PIN(.05) POUT(.10)
   /NOORIGIN 
   /DEPENDENT etnisyys
-  /METHOD=ENTER k18a k1 ika_uusi
-  /SCATTERPLOT=(*ZRESID ,*ZPRED)
-  /RESIDUALS DURBIN
-  /CASEWISE PLOT(ZRESID) OUTLIERS(3).
-
-REGRESSION
-  /MISSING LISTWISE
-  /STATISTICS COEFF OUTS CI(95) R ANOVA COLLIN TOL
-  /CRITERIA=PIN(.05) POUT(.10)
-  /NOORIGIN 
-  /DEPENDENT mahd_tas
-  /METHOD=ENTER k18a k1 ika_uusi
-  /SCATTERPLOT=(*ZRESID ,*ZPRED)
-  /RESIDUALS DURBIN
-  /CASEWISE PLOT(ZRESID) OUTLIERS(3).
-
-
-* VARIANSSIANALYYSI, jossa tarkastellaan onko eri maakunnissa eroja eriarvoisuuden kokemisessa. Posthoc-testinä bonferroni, koska otoskoot erisuuria. 
-* Tuolla on mun käsittääkseni merkitsevä yhteys siten, että Uudellamaan ja Pirkanmaan sekä Uudellamaan ja Keski-Suomen välillä on merkitsevä ero. 
-
-CROSSTABS
-  /TABLES=pahkina BY luokka
-  /FORMAT=AVALUE TABLES
-  /CELLS=COUNT ROW 
-  /COUNT ROUND CELL.
-
-UNIANOVA luokka BY vakuutuspiirit
-  /METHOD=SSTYPE(3)
-  /INTERCEPT=INCLUDE
-  /POSTHOC=vakuutuspiirit(BONFERRONI GT2) 
-  /PRINT ETASQ DESCRIPTIVE HOMOGENEITY
-  /CRITERIA=ALPHA(.05)
-  /DESIGN=vakuutuspiirit.
-
-*************** Selittävänä muuttujan luokka (kolmiluokkaisena muuttujana)**************
-
-REGRESSION
-  /MISSING LISTWISE
-  /STATISTICS COEFF OUTS CI(95) R ANOVA COLLIN TOL
-  /CRITERIA=PIN(.05) POUT(.10)
-  /NOORIGIN 
-  /DEPENDENT suhteet
-  /METHOD=ENTER luokka k1 ika_uusi
-  /SCATTERPLOT=(*ZRESID ,*ZPRED)
-  /RESIDUALS DURBIN
-  /CASEWISE PLOT(ZRESID) OUTLIERS(3).
-
-REGRESSION
-  /MISSING LISTWISE
-  /STATISTICS COEFF OUTS CI(95) R ANOVA COLLIN TOL
-  /CRITERIA=PIN(.05) POUT(.10)
-  /NOORIGIN 
-  /DEPENDENT kotitausta
-  /METHOD=ENTER luokka k1 ika_uusi
-  /SCATTERPLOT=(*ZRESID ,*ZPRED)
-  /RESIDUALS DURBIN
-  /CASEWISE PLOT(ZRESID) OUTLIERS(3).
-
-REGRESSION
-  /MISSING LISTWISE
-  /STATISTICS COEFF OUTS CI(95) R ANOVA COLLIN TOL
-  /CRITERIA=PIN(.05) POUT(.10)
-  /NOORIGIN 
-  /DEPENDENT maaratiet
-  /METHOD=ENTER luokka k1 ika_uusi
-  /SCATTERPLOT=(*ZRESID ,*ZPRED)
-  /RESIDUALS DURBIN
-  /CASEWISE PLOT(ZRESID) OUTLIERS(3).
-
-REGRESSION
-  /MISSING LISTWISE
-  /STATISTICS COEFF OUTS CI(95) R ANOVA COLLIN TOL
-  /CRITERIA=PIN(.05) POUT(.10)
-  /NOORIGIN 
-  /DEPENDENT etnisyys
-  /METHOD=ENTER luokka k1 ika_uusi
+  /METHOD=ENTER k18a_rev
   /SCATTERPLOT=(*ZRESID ,*ZPRED)
   /RESIDUALS DURBIN
   /CASEWISE PLOT(ZRESID) OUTLIERS(3).
@@ -359,17 +295,37 @@ REGRESSION
 
 FREQUENCIES tulokvartaalit.
 
+COMPUTE  tulot_sukup=tulokvartaalit*k1.
+
 REGRESSION
 /DESCRIPTIVES MEAN STDDEV CORR SIG N
 /MISSING LISTWISE
 /STATISTICS COEFF OUTS CI(95) R ANOVA COLLIN TOL CHANGE
 /CRITERIA=PIN(.05) POUT(.10)
 /NOORIGIN
-/DEPENDENT k18a
-/METHOD=ENTER tulokvartaalit aidintyodikot
-/METHOD=ENTER interaktio_kvart
+/DEPENDENT k18a_rev
+/METHOD=ENTER tulokvartaalit k1
+/METHOD=ENTER tulot_sukup
 /SCATTERPLOT=(*ZRESID ,*ZPRED)
 /RESIDUALS DURBIN HISTOGRAM(ZRESID)
 /CASEWISE PLOT(ZRESID) OUTLIERS(3).
 
 
+* VARIANSSIANALYYSI, jossa tarkastellaan onko eri maakunnissa eroja eriarvoisuuden kokemisessa. Posthoc-testinä bonferroni, koska otoskoot erisuuria. 
+* Tuolla on mun käsittääkseni merkitsevä yhteys siten, että Uudellamaan ja Pirkanmaan sekä Uudellamaan ja Keski-Suomen välillä on merkitsevä ero. 
+
+CROSSTABS
+  /TABLES=vakuutuspiirit BY k18a_rev
+  /FORMAT=AVALUE TABLES
+  /STATISTICS=CHISQ 
+  /CELLS=COUNT ROW 
+  /COUNT ROUND CELL.
+
+
+UNIANOVA k18a_rev BY vakuutuspiirit
+  /METHOD=SSTYPE(3)
+  /INTERCEPT=INCLUDE
+  /POSTHOC=vakuutuspiirit(BONFERRONI GT2) 
+  /PRINT ETASQ DESCRIPTIVE HOMOGENEITY
+  /CRITERIA=ALPHA(.05)
+  /DESIGN=vakuutuspiirit.
