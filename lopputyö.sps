@@ -1,10 +1,4 @@
-﻿
-* Encoding: UTF-8.
-* Korjattu/muutettu:
-    - muuttujat uudelleenkoodattu ja missing valuet määritetty
-    - faktorit pakotettu neljään
-    
-* Selitettäviä muuttujia k18a (ehkä k60) 
+﻿* Encoding: UTF-8.
 
 * Muuttujien uudelleenkoodaaminen
 
@@ -96,9 +90,10 @@ EXECUTE.
 COMPUTE interaktio_kvart=tulokvartaalit * aidintyodikot.
 EXECUTE.
 
+COMPUTE  tulot_sukup=tulokvartaalit*k1.
+
 * FAKTORIANALYYSI muuttujista k7a - k7k. Extraction: Maximum likelihood, Rotation: Direct oblimin.
-* Näyttäisi jakautuvan aika jees neljälle faktorille. 
-* Nimiehdotukset: 1: Suhteet, 2: Kotitausta 3: Määrätietoisuus 4: Taustatekijät
+* 1: Suhteet, 2: Kotitausta 3: Määrätietoisuus 4: Taustatekijät
 
 FACTOR
   /VARIABLES k7a k7b k7c k7d k7e k7f k7h k7g k7i k7j k7k
@@ -112,7 +107,7 @@ FACTOR
   /CRITERIA ITERATE(25) DELTA(0)
   /ROTATION OBLIMIN.
 
-* Summamuuttujien luominen. Kattelin läpi nuo descriptivet ja ei tarvii vähentää vastaajia (Mean -1) tjsp.
+* Summamuuttujien luominen
 * Suhteet:
 
 COMPUTE suhteet=mean(k7g,k7f).
@@ -157,41 +152,23 @@ RELIABILITY
 
 EXECUTE.
 
-* Mahdollisuuksien tasa-arvo
 
-COMPUTE mahd_tas=mean(k8a, k8b, k8c, k8d).
-RELIABILITY
-  /VARIABLES=k8a k8b k8c k8d
-  /SCALE('ALL VARIABLES') ALL
-  /MODEL=ALPHA
-  /STATISTICS=DESCRIPTIVE ANOVA.
-
-EXECUTE.
-
-* KORRELAATIOMATRIISI, jossa tarkastellaan miten faktoroitujen muuttujat korreloivat hyväosaisuuteen(huono-osaisuuteen). Suunnat tulee muokata. 
+* KORRELAATIOMATRIISI, jossa tarkastellaan miten faktoroitujen muuttujat korreloivat huono-osaisuuteen. 
 
 CORRELATIONS
-  /VARIABLES=k18a suhteet kotitausta maaratiet etnisyys ika_uusi k1
+  /VARIABLES=k18a_rev suhteet kotitausta maaratiet etnisyys
   /PRINT=TWOTAIL NOSIG
   /STATISTICS DESCRIPTIVES
   /MISSING=LISTWISE.
 
-CORRELATIONS
-  /VARIABLES=k60 suhteet kotitausta maaratiet etnisyys mahd_tas ika_uusi k1
-  /PRINT=TWOTAIL NOSIG
-  /STATISTICS DESCRIPTIVES
-  /MISSING=LISTWISE.
-
-************** Tarkastellaan miten hyvin vastaajan bruttotulot ennustavat luokkaan sijoittumista mukana muuttujat k18a ja k60.  *************
-* Toinen muuttujista (k18a tai k60) pitää poistaa. 
-* Molemmat korreloi aika hyvin ja mun mielestä tuloilla voidaan perustella tuon huono-osaisuude/hyväosaisuuden empiria, eli oikeutetaan k60 tai k18a käyttö ja se ei sillon jää pelkäksi KOKEMUKSEKSI johonkin kuulumisesta.
+* Bruttotulot huono-osaisuuden selittäjänä
  
-FREQUENCIES VARIABLES=k62 k60 k18a
+FREQUENCIES VARIABLES=tulokvartaalit k18a_rev
   /BARCHART FREQ
   /ORDER=ANALYSIS.
 
 CORRELATIONS
-  /VARIABLES=k62 k18a k60 
+  /VARIABLES=tulokvartaalit k18a_rev
   /PRINT=TWOTAIL NOSIG
   /STATISTICS DESCRIPTIVES
   /MISSING=LISTWISE.
@@ -201,38 +178,13 @@ REGRESSION
   /STATISTICS COEFF OUTS CI(95) R ANOVA COLLIN TOL
   /CRITERIA=PIN(.05) POUT(.10)
   /NOORIGIN 
-  /DEPENDENT k18a k60
-  /METHOD=ENTER k62
-  /SCATTERPLOT=(*ZRESID ,*ZPRED)
-  /RESIDUALS DURBIN
-  /CASEWISE PLOT(ZRESID) OUTLIERS(3).
-
-* Sama kun tulot on uudeelleenkoodattu tulokvartaaleihin
-
-FREQUENCIES VARIABLES=tulokvartaalit k18a
-  /BARCHART FREQ
-  /ORDER=ANALYSIS.
-
-CORRELATIONS
-  /VARIABLES=tulokvartaalit k18a
-  /PRINT=TWOTAIL NOSIG
-  /STATISTICS DESCRIPTIVES
-  /MISSING=LISTWISE.
-
-REGRESSION
-  /MISSING LISTWISE
-  /STATISTICS COEFF OUTS CI(95) R ANOVA COLLIN TOL
-  /CRITERIA=PIN(.05) POUT(.10)
-  /NOORIGIN 
-  /DEPENDENT k18a
+  /DEPENDENT k18a_rev
   /METHOD=ENTER tulokvartaalit
   /SCATTERPLOT=(*ZRESID ,*ZPRED)
   /RESIDUALS DURBIN
   /CASEWISE PLOT(ZRESID) OUTLIERS(3).
 
-************************************************************************************************************************
-
-* REGRESSIOANALYYSIT, jossa selittävänä muuttujana k18a ja selitettävinä kotitausta, suhteet, etnisyys, päämäärätietoisuus. Taustamuuttujina ikä ja sukupuoli
+* REGRESSIOANALYYSIT, jossa selittävänä muuttujana k18a ja selitettävinä kotitausta, suhteet, etnisyys, päämäärätietoisuus
 
 REGRESSION
   /MISSING LISTWISE
@@ -278,7 +230,7 @@ REGRESSION
   /RESIDUALS DURBIN
   /CASEWISE PLOT(ZRESID) OUTLIERS(3).
 
-************** Interaktio
+* Interaktio
 
 REGRESSION
 /DESCRIPTIVES MEAN STDDEV CORR SIG N
@@ -292,10 +244,6 @@ REGRESSION
 /SCATTERPLOT=(*ZRESID ,*ZPRED)
 /RESIDUALS DURBIN HISTOGRAM(ZRESID)
 /CASEWISE PLOT(ZRESID) OUTLIERS(3).
-
-FREQUENCIES tulokvartaalit.
-
-COMPUTE  tulot_sukup=tulokvartaalit*k1.
 
 REGRESSION
 /DESCRIPTIVES MEAN STDDEV CORR SIG N
@@ -311,8 +259,7 @@ REGRESSION
 /CASEWISE PLOT(ZRESID) OUTLIERS(3).
 
 
-* VARIANSSIANALYYSI, jossa tarkastellaan onko eri maakunnissa eroja eriarvoisuuden kokemisessa. Posthoc-testinä bonferroni, koska otoskoot erisuuria. 
-* Tuolla on mun käsittääkseni merkitsevä yhteys siten, että Uudellamaan ja Pirkanmaan sekä Uudellamaan ja Keski-Suomen välillä on merkitsevä ero. 
+* VARIANSSIANALYYSI, jossa tarkastellaan koetaanko eri Kelan vakuutuspiireissä eriarvoisuutta eri tavoilla. Posthoc-testinä bonferroni, koska otoskoot erisuuria. 
 
 CROSSTABS
   /TABLES=vakuutuspiirit BY k18a_rev
@@ -320,7 +267,6 @@ CROSSTABS
   /STATISTICS=CHISQ 
   /CELLS=COUNT ROW 
   /COUNT ROUND CELL.
-
 
 UNIANOVA k18a_rev BY vakuutuspiirit
   /METHOD=SSTYPE(3)
